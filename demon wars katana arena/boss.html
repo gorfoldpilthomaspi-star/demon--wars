@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Boss Fight</title>
+<style>
+    body {
+        margin: 0;
+        background: #0b0b0b;
+        color: white;
+        font-family: Arial, sans-serif;
+        overflow: hidden;
+    }
+
+    h1 {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 26px;
+        opacity: 0.15;
+    }
+
+    .levelBtn {
+        position: absolute;
+        top: 80px;
+        left: 20px;
+        padding: 10px 20px;
+        font-size: 16px;
+        background: #111;
+        color: white;
+        border: 2px solid #444;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-bottom: 8px;
+    }
+
+    #msgBox {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #000000aa;
+        padding: 12px 25px;
+        border-radius: 8px;
+        color: white;
+        font-size: 20px;
+        transition: 0.4s;
+        opacity: 0;
+    }
+
+    #player, #boss {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+    }
+
+    #player img, #boss img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        pointer-events: none;
+    }
+
+    #healthBar {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 200px;
+        height: 20px;
+        background: #222;
+        border: 2px solid #555;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    #healthFill {
+        height: 100%;
+        background: linear-gradient(to right, red, darkred);
+        width: 100%;
+        transition: width 0.3s;
+    }
+
+    #returnBtn {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        padding: 10px 18px;
+        font-size: 16px;
+        background: #111;
+        color: #fff;
+        border: 2px solid #444;
+        border-radius: 6px;
+        cursor: pointer;
+        opacity: 0.8;
+        transition: 0.3s;
+    }
+
+    #returnBtn:hover {
+        opacity: 1;
+        background: #222;
+    }
+</style>
+</head>
+<body>
+
+<h1>Boss Arena</h1>
+<div id="msgBox"></div>
+
+<!-- Level Buttons -->
+<div style="position:absolute; top:80px; left:20px;">
+    <button class="levelBtn" onclick="startBoss('easy')">Easy</button><br>
+    <button class="levelBtn" onclick="startBoss('normal')">Normal</button><br>
+    <button class="levelBtn" onclick="startBoss('hard')">Hard</button><br>
+    <button class="levelBtn" onclick="startBoss('deathhard')">DeathHard</button><br>
+    <button class="levelBtn" onclick="startBoss('inpossible')">Inpossible</button>
+</div>
+
+<!-- Health Bar -->
+<div id="healthBar"><div id="healthFill"></div></div>
+
+<!-- Player and Boss -->
+<div id="player"><img id="playerImg" src="game.png" alt="Player" /></div>
+<div id="boss"><img id="bossImg" src="boss.png" alt="Boss" /></div>
+
+<!-- Return Button -->
+<button id="returnBtn" onclick="location.href='game.html'">RETURN TO GAME</button>
+
+<script>
+let gameStopped = false;
+let playerPos = { x: 100, y: 300 };
+let bossPos = { x: 600, y: 300 };
+let bossHealth = 0;
+let bossMaxHealth = 0;
+let spriteTimeout;
+
+const player = document.getElementById("player");
+const playerImg = document.getElementById("playerImg");
+const boss = document.getElementById("boss");
+const bossImg = document.getElementById("bossImg");
+const healthFill = document.getElementById("healthFill");
+
+function startBoss(level) {
+    switch(level) {
+        case "easy": bossHealth = bossMaxHealth = 1000; break;
+        case "normal": bossHealth = bossMaxHealth = 2000; break;
+        case "hard": bossHealth = bossMaxHealth = 3000; break;
+        case "deathhard": bossHealth = bossMaxHealth = 4000; break;
+        case "inpossible": bossHealth = bossMaxHealth = 5000; break;
+    }
+
+    showMessage(`🔥 BOSS LEVEL: ${level.toUpperCase()}`);
+    boss.style.display = "block";
+    updateBossUI();
+}
+
+function updateBossUI() {
+    const percent = (bossHealth / bossMaxHealth) * 100;
+    healthFill.style.width = percent + "%";
+}
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+        gameStopped = !gameStopped;
+        showMessage(gameStopped ? "⛔ GAME STOPPED" : "▶ GAME RESUMED");
+    }
+
+    if (gameStopped) return;
+
+    switch (e.key) {
+        case "w": playerPos.y -= 10; break;
+        case "s": playerPos.y += 10; break;
+        case "a": playerPos.x -= 10; break;
+        case "d": playerPos.x += 10; break;
+    }
+
+    updatePlayer();
+});
+
+document.addEventListener("mousedown", (e) => {
+    if (e.button === 0 && !gameStopped) {
+        playerImg.src = "game-attack.png";
+        showMessage("⚔ ATTACK!");
+        clearTimeout(spriteTimeout);
+        spriteTimeout = setTimeout(() => {
+            playerImg.src = "game.png";
+        }, 300);
+        checkBossHit();
+    }
+});
+
+function updatePlayer() {
+    player.style.left = playerPos.x + "px";
+    player.style.top = playerPos.y + "px";
+    playerImg.src = "game-walk.png";
+    clearTimeout(spriteTimeout);
+    spriteTimeout = setTimeout(() => {
+        playerImg.src = "game.png";
+    }, 300);
+}
+
+function checkBossHit() {
+    const px = player.getBoundingClientRect();
+    const bx = boss.getBoundingClientRect();
+
+    const overlap = !(
+        px.right < bx.left ||
+        px.left > bx.right ||
+        px.bottom < bx.top ||
+        px.top > bx.bottom
+    );
+
+    if (overlap && bossHealth > 0) {
+        bossHealth -= 100;
+        updateBossUI();
+        if (bossHealth <= 0) {
+            showMessage("☠ BOSS DEFEATED!");
+            boss.style.display = "none";
+        }
+    }
+}
+
+function showMessage(text) {
+    let box = document.getElementById("msgBox");
+    box.innerText = text;
+    box.style.opacity = 1;
+    setTimeout(() => {
+        box.style.opacity = 0;
+    }, 1200);
+}
+
+// Boss AI
+setInterval(() => {
+    if (gameStopped || bossHealth <= 0) return;
+
+    const dx = playerPos.x - bossPos.x;
+    const dy = playerPos.y - bossPos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 5) {
+        bossPos.x += (dx / dist) * 0.8;
+        bossPos.y += (dy / dist) * 0.8;
+    }
+
+    boss.style.left = bossPos.x + "px";
+    boss.style.top = bossPos.y + "px";
+}, 40);
+</script>
+
+</body>
+</html>

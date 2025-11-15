@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Demon Wars - Game</title>
+<style>
+    body {
+        margin: 0;
+        background: #0b0b0b;
+        color: white;
+        font-family: Arial, sans-serif;
+        overflow: hidden;
+    }
+
+    #msgBox {
+        position: fixed; 
+        top: 20px; 
+        left: 50%; 
+        transform: translateX(-50%);
+        background: #000000aa; 
+        padding: 12px 25px; 
+        border-radius: 8px; 
+        color: white; 
+        font-size: 20px; 
+        transition: 0.4s; 
+        opacity: 0;
+    }
+
+    h1 {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 26px;
+        opacity: 0.15;
+    }
+
+    #player, #enemy, #enemy2, #player2 {
+        position: absolute;
+        width: 80px;
+        height: 80px;
+    }
+
+    #player img, #enemy img, #enemy2 img, #player2 img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        pointer-events: none;
+    }
+</style>
+</head>
+<body>
+
+<h1>Demon Wars: Katana Arena - GAME</h1>
+<div id="msgBox"></div>
+
+<div id="player">
+  <img id="playerImg" src="game.png" alt="Player" />
+</div>
+
+<div id="enemy">
+  <img id="enemyImg" src="enemy.png" alt="Enemy" />
+</div>
+
+<div id="enemy2">
+  <img id="enemy2Img" src="enemy2.png" alt="Enemy 2" />
+</div>
+
+<div id="player2">
+  <img id="player2Img" src="game2.png" alt="Player 2" />
+</div>
+
+<audio id="bgMusic" src="music.mp3" loop autoplay></audio>
+
+<script>
+let gameStopped = false;
+let playerPos = { x: 100, y: 200 };
+let enemyPos = { x: 600, y: 200 };
+let enemy2Pos = { x: 400, y: 100 };
+let player2Pos = { x: 300, y: 300 };
+let enemyHealth = 100;
+let enemy2Health = 100;
+let spriteTimeout;
+let attackPressed = false;
+let fPressed = false;
+
+const player = document.getElementById("player");
+const playerImg = document.getElementById("playerImg");
+const enemy = document.getElementById("enemy");
+const enemyImg = document.getElementById("enemyImg");
+const enemy2 = document.getElementById("enemy2");
+const enemy2Img = document.getElementById("enemy2Img");
+const player2 = document.getElementById("player2");
+const player2Img = document.getElementById("player2Img");
+const bgMusic = document.getElementById("bgMusic");
+bgMusic.volume = 0.5;
+
+document.addEventListener("mousedown", (e) => {
+    if (e.button === 0) attackPressed = true;
+
+    if (attackPressed && !gameStopped) {
+        if (fPressed) {
+            playerImg.src = "last.attack.png";
+            showMessage("💥 LAST HIT!");
+        } else {
+            playerImg.src = "game-attack.png";
+            showMessage("⚔ ATTACK!");
+        }
+
+        clearTimeout(spriteTimeout);
+        spriteTimeout = setTimeout(() => {
+            playerImg.src = "game.png";
+        }, 300);
+
+        checkPlayerAttack(enemy, enemyPos, "enemy");
+        checkPlayerAttack(enemy2, enemy2Pos, "enemy2");
+    }
+});
+
+document.addEventListener("mouseup", () => {
+    attackPressed = false;
+});
+
+document.addEventListener("keydown", (e) => {
+    if (e.key === "f") fPressed = true;
+
+    if (e.key === "Escape") {
+        gameStopped = !gameStopped;
+        showMessage(gameStopped ? "⛔ GAME STOPPED" : "▶ GAME RESUMED");
+        bgMusic[gameStopped ? "pause" : "play"]();
+    }
+
+    if (gameStopped) return;
+
+    switch (e.key) {
+        case "w": playerPos.y -= 10; break;
+        case "s": playerPos.y += 10; break;
+        case "a": playerPos.x -= 10; break;
+        case "d": playerPos.x += 10; break;
+    }
+
+    updatePlayer();
+});
+
+document.addEventListener("keyup", (e) => {
+    if (e.key === "f") fPressed = false;
+});
+
+function showMessage(text) {
+    let box = document.getElementById("msgBox");
+    box.innerText = text;
+    box.style.opacity = 1;
+    setTimeout(() => {
+        box.style.opacity = 0;
+    }, 1200);
+}
+
+function updatePlayer() {
+    player.style.left = playerPos.x + "px";
+    player.style.top = playerPos.y + "px";
+    playerImg.src = "game-walk.png";
+    clearTimeout(spriteTimeout);
+    spriteTimeout = setTimeout(() => {
+        playerImg.src = "game.png";
+    }, 300);
+}
+
+function takeHit() {
+    playerImg.src = "game-hit.png";
+    clearTimeout(spriteTimeout);
+    spriteTimeout = setTimeout(() => {
+        playerImg.src = "game.png";
+    }, 400);
+    showMessage("💢 YOU GOT HIT!");
+}
+
+function moveEnemies() {
+    if (gameStopped) return;
+
+    moveEnemy(enemy, enemyPos);
+    moveEnemy(enemy2, enemy2Pos);
+}
+
+function moveEnemy(enemyEl, pos) {
+    const dx = playerPos.x - pos.x;
+    const dy = playerPos.y - pos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 5) {
+        pos.x += (dx / dist) * 1.2;
+        pos.y += (dy / dist) * 1.2;
+    }
+
+    enemyEl.style.left = pos.x + "px";
+    enemyEl.style.top = pos.y + "px";
+
+    checkEnemyAttack(enemyEl);
+}
+
+function checkEnemyAttack(enemyEl) {
+    const px = player.getBoundingClientRect();
+    const ex = enemyEl.getBoundingClientRect();
+
+    const overlap = !(
+        px.right < ex.left ||
+        px.left > ex.right ||
+        px.bottom < ex.top ||
+        px.top > ex.bottom
+    );
+
+    if (overlap) {
+        takeHit();
+    }
+}
+
+function checkPlayerAttack(enemyEl, enemyPos, id) {
+    const px = player.getBoundingClientRect();
+    const ex = enemyEl.getBoundingClientRect();
+
+    const overlap = !(
+        px.right < ex.left ||
+        px.left > ex.right ||
+        px.bottom < ex.top ||
+        px.top > ex.bottom
+    );
+
+    if (overlap) {
+        if (id === "enemy") {
+            enemyHealth -= fPressed ? 100 : 40;
+            if (enemyHealth <= 0) {
+                enemy.style.display = "none";
+                showMessage("☠ ENEMY DEFEATED!");
+            }
+        } else if (id === "enemy2") {
+            enemy2Health -= fPressed ? 100 : 40;
+            if (enemy2Health <= 0) {
+                enemy2.style.display = "none";
+                showMessage("☠ ENEMY 2 DEFEATED!");
+            }
+        }
+    }
+}
+
+function movePlayer2() {
+    if (gameStopped) return;
+
+    const targets = [enemyPos, enemy2Pos];
+    let closest = targets[0];
+    let minDist = distance(player2Pos, targets[0]);
+
+    for (let i = 1; i < targets.length; i++) {
+        const d = distance(player2Pos, targets[i]);
+        if (d < minDist) {
+            minDist = d;
+            closest = targets[i];
+        }
+    }
+
+    const dx = closest.x - player2Pos.x;
+    const dy = closest.y - player2Pos.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 5) {
+        player2Pos.x += (dx / dist) * 1.4;
+        player2Pos.y += (dy / dist) * 1.4;
+    }
+
+    player2.style.left = player2Pos.x + "px";
+    player2.style.top = player2Pos.y + "px";
+}
+
+function distance(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
+}
+
+setInterval(() => {
+    moveEnemies();
+    movePlayer2();
+}, 40);
+</script>
+
+</body><button id="bossBtn" onclick="location.href='boss.html'">PLAY BOSS FIGHT</button>
+</html>
